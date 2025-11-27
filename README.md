@@ -53,6 +53,7 @@ import { useRealtime } from './hooks'
 const { data, isConnected, error } = useRealtime<Message>({
   table: 'messages',
   event: '*', // 'INSERT' | 'UPDATE' | 'DELETE' | '*'
+  primaryKey: 'id', // Optional: specify primary key for efficient comparisons
   onInsert: (newMessage) => console.log('New message:', newMessage),
   onUpdate: ({ old, new: updated }) => console.log('Updated:', updated),
   onDelete: (deleted) => console.log('Deleted:', deleted),

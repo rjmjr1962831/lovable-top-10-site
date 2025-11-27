@@ -15,9 +15,34 @@ interface UseRealtimeOptions<T extends { [key: string]: unknown }> {
   schema?: string
   event?: RealtimeEvent
   filter?: string
+  /** Primary key field name used for efficient object comparison. Defaults to 'id'. */
+  primaryKey?: keyof T
   onInsert?: (payload: T) => void
   onUpdate?: (payload: { old: T; new: T }) => void
   onDelete?: (payload: T) => void
+}
+
+/**
+ * Compares two objects for equality.
+ * Uses primary key comparison if available, otherwise falls back to JSON comparison.
+ */
+function areEqual<T extends { [key: string]: unknown }>(
+  a: T, 
+  b: Partial<T>, 
+  primaryKey?: keyof T
+): boolean {
+  if (primaryKey && primaryKey in a && primaryKey in b) {
+    return a[primaryKey] === b[primaryKey]
+  }
+  // Fallback: check for common id fields
+  if ('id' in a && 'id' in b) {
+    return a.id === b.id
+  }
+  if ('uuid' in a && 'uuid' in b) {
+    return a.uuid === b.uuid
+  }
+  // Last resort: JSON comparison
+  return JSON.stringify(a) === JSON.stringify(b)
 }
 
 /**
@@ -28,6 +53,7 @@ interface UseRealtimeOptions<T extends { [key: string]: unknown }> {
  * const { data, isConnected, error } = useRealtime<Message>({
  *   table: 'messages',
  *   event: '*',
+ *   primaryKey: 'id',
  *   onInsert: (newMessage) => console.log('New message:', newMessage),
  * })
  * ```
@@ -37,6 +63,7 @@ export function useRealtime<T extends { [key: string]: unknown }>({
   schema = 'public',
   event = '*',
   filter,
+  primaryKey,
   onInsert,
   onUpdate,
   onDelete,
@@ -63,7 +90,7 @@ export function useRealtime<T extends { [key: string]: unknown }>({
       } else if (eventType === 'UPDATE' && payload.new && payload.old) {
         setData((prev) =>
           prev.map((item) =>
-            JSON.stringify(item) === JSON.stringify(payload.old)
+            areEqual(item, payload.old, primaryKey)
               ? (payload.new as T)
               : item
           )
@@ -72,13 +99,13 @@ export function useRealtime<T extends { [key: string]: unknown }>({
       } else if (eventType === 'DELETE' && payload.old) {
         setData((prev) =>
           prev.filter(
-            (item) => JSON.stringify(item) !== JSON.stringify(payload.old)
+            (item) => !areEqual(item, payload.old, primaryKey)
           )
         )
         onDelete?.(payload.old as T)
       }
     },
-    [onInsert, onUpdate, onDelete]
+    [onInsert, onUpdate, onDelete, primaryKey]
   )
 
   const handleInsert = useCallback(
@@ -96,7 +123,7 @@ export function useRealtime<T extends { [key: string]: unknown }>({
       if (payload.new && payload.old) {
         setData((prev) =>
           prev.map((item) =>
-            JSON.stringify(item) === JSON.stringify(payload.old)
+            areEqual(item, payload.old, primaryKey)
               ? (payload.new as T)
               : item
           )
@@ -104,7 +131,7 @@ export function useRealtime<T extends { [key: string]: unknown }>({
         onUpdate?.({ old: payload.old as T, new: payload.new as T })
       }
     },
-    [onUpdate]
+    [onUpdate, primaryKey]
   )
 
   const handleDelete = useCallback(
@@ -112,13 +139,13 @@ export function useRealtime<T extends { [key: string]: unknown }>({
       if (payload.old) {
         setData((prev) =>
           prev.filter(
-            (item) => JSON.stringify(item) !== JSON.stringify(payload.old)
+            (item) => !areEqual(item, payload.old, primaryKey)
           )
         )
         onDelete?.(payload.old as T)
       }
     },
-    [onDelete]
+    [onDelete, primaryKey]
   )
 
   useEffect(() => {

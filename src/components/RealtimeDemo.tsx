@@ -174,7 +174,7 @@ VITE_SUPABASE_ANON_KEY=your-anon-key`}
             <div className="bg-slate-800/50 rounded-lg p-4 text-center">
               <div className="text-2xl mb-2">👥</div>
               <h3 className="font-semibold text-purple-400 mb-1">Presence</h3>
-              <p className="text-sm text-slate-400">Track who&apos;s online in real-time</p>
+              <p className="text-sm text-slate-400">Track who's online in real-time</p>
             </div>
           </div>
         </div>
